@@ -1,75 +1,233 @@
-name: "template"
-
+name: "aws-audit-manager"
 # Canonical GitHub repo
-github_repo: "cloudposse-terraform-components/template"
-
+github_repo: "cloudposse-terraform-components/aws-audit-manager"
 # Short description of this project
 description: |-
-  Description of this component 55
+  This component is responsible for configuring AWS Audit Manager within an AWS Organization.
 
-usage: |-
-  **Stack Level**: Regional or Global
+  AWS Audit Manager helps you continuously audit your AWS usage to simplify how you assess risk and compliance with
+  regulations and industry standards. It automates evidence collection, organizes compliance data, and generates
+  audit-ready reports.
 
-  Here's an example snippet for how to use this component.
+  ## Key Features
+
+  - **Prebuilt Frameworks**: AWS Control Tower, CIS, FedRAMP, GDPR, HIPAA, PCI DSS, SOC 2, NIST 800-53
+  - **Custom Controls**: Build custom frameworks and controls for specific business requirements
+  - **Automated Evidence**: Collects evidence from CloudTrail, Config, Security Hub, License Manager
+  - **Multi-account**: Supports assessments across multiple AWS accounts via AWS Organizations
+  - **Delegation Workflow**: Delegate control sets to specialized team members
+  - **Evidence Search**: Search through thousands of pieces of collected evidence with filters and groupings
+  - **Assessment Reports**: Cryptographically verified reports with organized evidence
+  - **Manual Evidence**: Upload policy documents, training transcripts, architecture diagrams
+
+  ## Architecture
+
+  Audit Manager uses a **unique single-step deployment model** different from other AWS security services:
+
+  | Component | Description |
+  |-----------|-------------|
+  | **Organization Management Account** | Enables Audit Manager AND delegates administration in a single deployment |
+  | **Delegated Administrator Account** | Receives delegated administration automatically, creates/manages assessments |
+  | **Member Accounts** | Evidence automatically collected, no additional configuration required |
+
+  ## Deployment Model Comparison
+
+  | Aspect | AWS Audit Manager | AWS Inspector2 | AWS Access Analyzer |
+  |--------|-------------------|----------------|---------------------|
+  | **Deployment Approach** | Single-step in root account only | Delegated administrator (2 steps) | Delegated administrator (2 steps) |
+  | **Member Account Setup** | No setup (evidence auto-collected) | Auto-enabled by delegated admin | No setup (auto-analyzed) |
+  | **Provisioning Steps** | 1 step (root only) | 2 steps (root → security) | 2 steps (root → security) |
+
+  ## Regional Deployment
+
+  Audit Manager is a regional service. You must deploy it to each region where you want to run compliance assessments.
+  Assessment reports are stored in region-specific S3 buckets.
+
+  ## Service-Linked Role
+
+  AWS Audit Manager automatically creates a service-linked role when you enable the service. No manual role creation is
+  required.
+
+  ## Assessment Report S3 Buckets
+
+  When generating assessment reports, Audit Manager publishes reports to an S3 bucket of your choice:
+
+  - **Same-Region Buckets**: Recommended. Supports up to 22,000 evidence items (vs. 3,500 for cross-region)
+  - **Encryption**: If using SSE-KMS, the KMS key must match your Audit Manager data encryption settings
+  - **Account**: Use buckets in the delegated administrator account (cross-account not recommended)
+  - **Per-Region**: Create a bucket in each region where you'll run assessments
+
+  ## Configuration
+
+  ### Defaults (Abstract Component)
 
   ```yaml
   components:
     terraform:
-      foo:
+      audit-manager/defaults:
+        metadata:
+          component: audit-manager
+          type: abstract
         vars:
           enabled: true
+          global_environment: gbl
+          account_map_tenant: core
+          root_account_stage: root
+          delegated_administrator_account_name: core-security
+          deregister_on_destroy: true
   ```
 
+  ### Root Account Configuration (Single-Step Deployment)
 
+  ```yaml
+  import:
+    - catalog/audit-manager/defaults
 
+  components:
+    terraform:
+      # Single-step: Enable Audit Manager and delegate administration
+      audit-manager/root:
+        metadata:
+          component: audit-manager
+          inherits:
+            - audit-manager/defaults
+        vars:
+          # Requires SuperAdmin permissions
+          privileged: true
+  ```
 
+  ## Provisioning
 
+  Deploy to the organization management (root) account for each region where you want assessments:
+
+  ```bash
+  # Deploy to us-east-1
+  atmos terraform apply audit-manager/root -s plat-use1-root
+
+  # Deploy to us-west-2
+  atmos terraform apply audit-manager/root -s plat-usw2-root
+  ```
+
+  This single deployment:
+  - Enables Audit Manager in the organization
+  - Delegates administration to the security account
+  - Begins automatic evidence collection from member accounts
+
+  ## Assessment Report S3 Bucket Setup
+
+  Create S3 buckets in the delegated administrator (security) account for each region:
+
+  ```yaml
+  # stacks/catalog/s3-bucket/audit-manager-reports.yaml
+  import:
+    - catalog/s3-bucket/defaults
+
+  components:
+    terraform:
+      audit-manager-reports-bucket:
+        metadata:
+          component: s3-bucket
+          inherits:
+            - s3-bucket/defaults
+        vars:
+          enabled: true
+          name: audit-manager-reports
+          s3_object_ownership: "BucketOwnerEnforced"
+          versioning_enabled: false
+  ```
+
+  Deploy to each region in the security account:
+
+  ```bash
+  atmos terraform apply audit-manager-reports-bucket -s plat-use1-security
+  atmos terraform apply audit-manager-reports-bucket -s plat-usw2-security
+  ```
+
+  ## Creating Assessments
+
+  After deploying Audit Manager, create assessments in the delegated administrator account:
+
+  1. **Via Console**: AWS Audit Manager console → Assessments → Create assessment
+  2. **Via CLI**: Use `aws auditmanager` CLI commands
+  3. **Via Terraform**: Use `aws_auditmanager_assessment` resource
+
+  **Assessment Components:**
+  - **Framework**: Choose prebuilt or custom framework
+  - **Scope**: Select AWS accounts and services to assess
+  - **Roles**: Define who can access the assessment
+  - **Report Destination**: Specify S3 bucket for reports
+
+  ## Cost Considerations
+
+  - **Assessment Price**: Based on number of evidence items collected per month
+  - **Evidence Storage**: S3 storage costs for assessment reports
+  - **Evidence Finder**: Additional cost if enabling CloudTrail Lake integration
+  - **Free Tier**: Limited free usage during first 13 months
+  - **Regional**: Costs are per region
+
+  See [AWS Audit Manager Pricing](https://aws.amazon.com/audit-manager/pricing/) for current rates.
+
+  ## Compliance Frameworks Supported
+
+  Audit Manager provides prebuilt frameworks for common compliance standards:
+
+  - **PCI DSS**: Payment Card Industry Data Security Standard
+  - **HIPAA**: Health Insurance Portability and Accountability Act
+  - **SOC 2**: Service Organization Control 2
+  - **NIST 800-53**: National Institute of Standards and Technology (Rev 4 and Rev 5)
+  - **FedRAMP**: Federal Risk and Authorization Management Program
+  - **GDPR**: General Data Protection Regulation
+  - **ISO 27001**: Information Security Management
+  - **CIS**: Center for Internet Security benchmarks (v1.2.0, v1.3.0, v1.4.0, v7.1, v8)
+  - **GxP**: Good Practice quality guidelines (21 CFR Part 11)
+  - **AWS Control Tower**: AWS Control Tower guardrails
+
+  ## References
+
+  ### AWS Documentation
+  - [What is AWS Audit Manager?](https://docs.aws.amazon.com/audit-manager/latest/userguide/what-is.html)
+  - [Setting Up AWS Audit Manager](https://docs.aws.amazon.com/audit-manager/latest/userguide/setting-up.html)
+  - [Assessment Settings](https://docs.aws.amazon.com/audit-manager/latest/userguide/assessment-settings.html)
+  - [Audit Manager Frameworks](https://docs.aws.amazon.com/audit-manager/latest/userguide/frameworks.html)
+  - [Evidence Collection](https://docs.aws.amazon.com/audit-manager/latest/userguide/evidence.html)
+  - [Delegated Administrator](https://docs.aws.amazon.com/audit-manager/latest/userguide/delegated-admin.html)
+
+  ### Terraform Resources
+  - [aws_auditmanager_account_registration](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/auditmanager_account_registration)
+  - [aws_auditmanager_organization_admin_account_registration](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/auditmanager_organization_admin_account_registration)
+  - [aws_auditmanager_assessment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/auditmanager_assessment)
+  - [aws_auditmanager_control](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/auditmanager_control)
+  - [aws_auditmanager_framework](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/auditmanager_framework)
+
+  ### Additional Resources
+  - [AWS Audit Manager Product Page](https://aws.amazon.com/audit-manager/)
+  - [AWS Audit Manager Pricing](https://aws.amazon.com/audit-manager/pricing/)
+  - [AWS Audit Manager Features](https://aws.amazon.com/audit-manager/features/)
 tags:
-  - terraform
-  - terraform-modules
   - aws
-  - components
-  - terraform-components
-  - root
-  - geodesic
-  - reference-implementation
-  - reference-architecture
-
+  - audit-manager
+  - compliance
+  - security
+  - governance
+  - organizations
+  - risk-management
 # Categories of this project
-categories:
-  - terraform-modules/root
-  - terraform-components
-
+categories: []
 # License of this project
 license: "APACHE2"
-
 # Badges to display
 badges:
-  - name: "Latest Release"
-    image: "https://img.shields.io/github/release/cloudposse-terraform-components/template.svg?style=for-the-badge"
-    url: "https://github.com/cloudposse-terraform-components/template/releases/latest"
-  - name: "Slack Community"
-    image: "https://slack.cloudposse.com/for-the-badge.svg"
-    url: "https://slack.cloudposse.com"
-
-references:
-  - name: "Cloud Posse Documentation"
-    description: "Complete documentation for the Cloud Posse solution"
-    url: "https://docs.cloudposse.com"
-  - name: "Reference Architectures"
-    description: "Launch effortlessly with our turnkey reference architectures, built either by your team or ours."
-    url: "https://cloudposse.com/"
-
+  - name: Latest Release
+    image: https://img.shields.io/github/release/cloudposse-terraform-components/aws-audit-manager.svg?style=for-the-badge
+    url: https://github.com/cloudposse-terraform-components/aws-audit-manager/releases/latest
+  - name: Slack Community
+    image: https://slack.cloudposse.com/for-the-badge.svg
+    url: https://slack.cloudposse.com
 related:
-- name: "Cloud Posse Terraform Modules"
-  description: Our collection of reusable Terraform modules used by our reference architectures.
-  url: "https://docs.cloudposse.com/modules/"
-- name: "Atmos"
-  description: "Atmos is like docker-compose but for your infrastructure"
-  url: "https://atmos.tools"
-
+  - name: "Cloud Posse Terraform Modules"
+    description: Our collection of reusable Terraform modules used by our reference architectures.
+    url: "https://docs.cloudposse.com/modules/"
+  - name: "Atmos"
+    description: "Atmos is like docker-compose but for your infrastructure"
+    url: "https://atmos.tools"
 contributors: [] # If included generates contribs
-
-
-
-
