@@ -9,7 +9,7 @@ tags:
   - risk-management
 ---
 
-# Component: `audit-manager`
+# Component: `aws-audit-manager`
 
 This component is responsible for configuring AWS Audit Manager within an AWS Organization.
 
