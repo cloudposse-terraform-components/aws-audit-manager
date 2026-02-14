@@ -72,9 +72,9 @@ description: |-
   ```yaml
   components:
     terraform:
-      audit-manager/defaults:
+      aws-audit-manager/defaults:
         metadata:
-          component: audit-manager
+          component: aws-audit-manager
           type: abstract
         vars:
           enabled: true
@@ -89,16 +89,16 @@ description: |-
 
   ```yaml
   import:
-    - catalog/audit-manager/defaults
+    - catalog/aws-audit-manager/defaults
 
   components:
     terraform:
       # Single-step: Enable Audit Manager and delegate administration
-      audit-manager/root:
+      aws-audit-manager/root:
         metadata:
-          component: audit-manager
+          component: aws-audit-manager
           inherits:
-            - audit-manager/defaults
+            - aws-audit-manager/defaults
         vars:
           # Requires SuperAdmin permissions
           privileged: true
@@ -110,10 +110,10 @@ description: |-
 
   ```bash
   # Deploy to us-east-1
-  atmos terraform apply audit-manager/root -s plat-use1-root
+  atmos terraform apply aws-audit-manager/root -s core-use1-root
 
   # Deploy to us-west-2
-  atmos terraform apply audit-manager/root -s plat-usw2-root
+  atmos terraform apply aws-audit-manager/root -s core-usw2-root
   ```
 
   This single deployment:
@@ -147,8 +147,8 @@ description: |-
   Deploy to each region in the security account:
 
   ```bash
-  atmos terraform apply audit-manager-reports-bucket -s plat-use1-security
-  atmos terraform apply audit-manager-reports-bucket -s plat-usw2-security
+  atmos terraform apply audit-manager-reports-bucket -s core-use1-security
+  atmos terraform apply audit-manager-reports-bucket -s core-usw2-security
   ```
 
   ## Creating Assessments
