@@ -20,6 +20,14 @@ description: |-
   - **Assessment Reports**: Cryptographically verified reports with organized evidence
   - **Manual Evidence**: Upload policy documents, training transcripts, architecture diagrams
 
+  ## Component Features
+
+  - **Single-Step Deployment**: Unique deployment model - enables and delegates in a single step from the root account
+  - **Prebuilt Frameworks**: Supports PCI DSS, HIPAA, SOC 2, NIST 800-53, FedRAMP, GDPR, CIS, and more
+  - **Automated Evidence Collection**: Collects evidence from CloudTrail, Config, Security Hub, License Manager
+  - **Account Verification**: Optional safety check that validates Terraform is running in the correct AWS account
+  - **Flexible Account Map**: Supports both remote-state account-map lookups (default) and static account map variables
+
   ## Architecture
 
   Audit Manager uses a **unique single-step deployment model** different from other AWS security services:
