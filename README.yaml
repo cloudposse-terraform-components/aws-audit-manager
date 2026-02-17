@@ -26,7 +26,7 @@ description: |-
   - **Prebuilt Frameworks**: Supports PCI DSS, HIPAA, SOC 2, NIST 800-53, FedRAMP, GDPR, CIS, and more
   - **Automated Evidence Collection**: Collects evidence from CloudTrail, Config, Security Hub, License Manager
   - **Account Verification**: Optional safety check that validates Terraform is running in the correct AWS account
-  - **Flexible Account Map**: Supports both remote-state account-map lookups (default) and static account map variables
+  - **Flexible Account Map**: Supports both remote-state account-map lookups and static account map variables (default)
 
   ## Architecture
 

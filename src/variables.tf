@@ -11,10 +11,10 @@ variable "account_verification_enabled" {
 variable "account_map_enabled" {
   type        = bool
   description = <<-DOC
-  Enable the account map component. When true (default), the component fetches account mappings from the
-  `account-map` component via remote state. When false, the component uses the static `account_map` variable instead.
+  Enable the account map component. When true, the component fetches account mappings from the
+  `account-map` component via remote state. When false (default), the component uses the static `account_map` variable instead.
   DOC
-  default     = true
+  default     = false
 }
 
 variable "account_map" {
@@ -76,4 +76,22 @@ variable "root_account_stage" {
   The stage name for the Organization root (management) account. This is used to lookup account IDs from account names
   using the `account-map` component.
   DOC
+}
+
+variable "delegated_administrator_account_name" {
+  type        = string
+  default     = "core-security"
+  description = "The name of the account that is the AWS Organization Delegated Administrator account"
+}
+
+variable "deregister_on_destroy" {
+  type        = bool
+  default     = true
+  description = "Flag to deregister AuditManager in the account upon destruction. If set to `false`, AuditManager will remain active in the account, even if this resource is removed"
+}
+
+variable "organization_management_account_name" {
+  type        = string
+  default     = null
+  description = "The name of the AWS Organization management account"
 }
