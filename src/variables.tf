@@ -89,9 +89,3 @@ variable "deregister_on_destroy" {
   default     = true
   description = "Flag to deregister AuditManager in the account upon destruction. If set to `false`, AuditManager will remain active in the account, even if this resource is removed"
 }
-
-variable "organization_management_account_name" {
-  type        = string
-  default     = null
-  description = "The name of the AWS Organization management account"
-}
